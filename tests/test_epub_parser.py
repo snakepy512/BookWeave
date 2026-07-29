@@ -40,7 +40,8 @@ def write_fixture(path: Path) -> None:
             '<p id="p2" onclick="alert(1)">Hello <code>world</code>.</p>'
             '<h2 id="p3">Section One</h2><h2 id="p4">Figure 1.1 Caption</h2>'
             '<pre id="p5">SELECT 1;</pre>'
-            '<img id="p6" src="../Images/a.png" alt="diagram"/></div></body></html>'
+            '<img id="p6" src="../Images/a.png" alt="diagram"/>'
+            '<h2 id="p7">This chapter covers</h2></div></body></html>'
         ),
         "OEBPS/Images/a.png": "png-bytes",
     }
@@ -91,7 +92,7 @@ class EpubParserTests(unittest.TestCase):
             self.assertEqual(publication.version, "2.0")
             self.assertEqual(publication.title, "Fixture Book")
             self.assertEqual(publication.chapters[0].title, "Chapter One")
-            self.assertEqual([block.kind for block in publication.blocks], ["heading", "paragraph", "heading", "heading", "code", "image"])
+            self.assertEqual([block.kind for block in publication.blocks], ["heading", "paragraph", "heading", "heading", "code", "image", "heading"])
             self.assertEqual(publication.blocks[0].source_fragment, "p1")
             self.assertIn("epub-source://OEBPS/Text/chapter.xhtml#p2", publication.blocks[1].source_uri)
             self.assertIn("epub-source://OEBPS/Images/a.png", publication.blocks[5].html)
@@ -167,12 +168,16 @@ class EpubParserTests(unittest.TestCase):
             self.assertIn('data-theme-toggle', chapter)
             self.assertIn("../epub-source/OEBPS/Images/a.png", chapter)
             self.assertNotIn("原 EPUB 片段", chapter)
+            self.assertNotIn("下载原始 EPUB", chapter)
+            self.assertNotIn("打开原始 PDF", chapter)
+            self.assertEqual(chapter.count("Chapter One</h1>"), 1)
             self.assertIn('<aside class="toc chapter-toc"', chapter)
             self.assertIn('class="toc-level-1 active"', chapter)
             self.assertIn('href="#rendered-epub-c0001-b0003"', chapter)
             self.assertIn("Section One", chapter)
             toc = chapter.split('<section class="chapter-content"', 1)[0]
             self.assertNotIn("Figure 1.1 Caption", toc)
+            self.assertNotIn("This chapter covers", toc)
             self.assertIn("minmax(0,1fr)", (target / "assets/reader.css").read_text(encoding="utf-8"))
 
             render_reader(bundle, publication, target, layout="both")

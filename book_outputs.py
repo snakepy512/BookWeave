@@ -58,6 +58,13 @@ def _render_reader_heading(block: EpubBlock) -> str:
 def _render_reader_chapter_content(chapter, source_prefix: str) -> str:
     content: list[str] = []
     for block in chapter.blocks:
+        if (
+            block.kind == "heading"
+            and (block.heading_level or 0) == 1
+            and block.text.strip() == (chapter.title or "").strip()
+        ):
+            # The chapter page already renders this title in its header.
+            continue
         if block.kind == "heading":
             content.append(_render_reader_heading(block))
         else:
@@ -77,6 +84,11 @@ def _chapter_filename(chapter) -> str:
 def _is_caption_heading(text: str) -> bool:
     """Return whether a heading-looking EPUB block is a figure/table caption."""
     return bool(re.match(r"^\s*(?:figure|table)\s+\d+(?:\.\d+)*\b", text, re.IGNORECASE))
+
+
+def _is_chapter_overview_heading(text: str) -> bool:
+    """Return whether a generic overview label should stay out of the TOC."""
+    return text.strip().casefold() == "this chapter covers"
 
 
 READER_THEMES = {
@@ -217,13 +229,6 @@ def reader_script() -> str:
 """
 
 
-def _reader_source_links(bundle: SourceBundle, prefix: str) -> str:
-    links = [f'<a href="{prefix}source.epub">下载原始 EPUB</a>']
-    if bundle.pdf:
-        links.append(f'<a href="{prefix}source.pdf">打开原始 PDF</a>')
-    return " · ".join(links)
-
-
 def _reader_document(
     title: str,
     language: str,
@@ -270,7 +275,7 @@ def _render_index_document(
 <h1>{html.escape(publication.title)}</h1>
 <p class="reader-subtitle">按章节阅读；每个页面都可单独交给翻译插件处理。</p>
 </header>
-<p class="source-banner" translate="no">正文优先来自 EPUB；{_reader_source_links(bundle, "")}。原 EPUB 文件位于本目录的 <code>epub-source/</code>。</p>
+<p class="source-banner" translate="no">正文优先来自 EPUB；图片等本地资源位于 <code>epub-source/</code>。</p>
 <section class="chapter-index" aria-labelledby="chapter-index-title">
 <h2 id="chapter-index-title">目录</h2>
 <input class="chapter-filter" data-chapter-filter type="search" placeholder="筛选章节" aria-label="筛选章节">
@@ -307,6 +312,7 @@ def _render_chapter_toc(chapters: list[tuple[object, str]], current_chapter) -> 
                 and (block.heading_level or 0) >= 2
                 and block.text.strip() != (item_chapter.title or "").strip()
                 and not _is_caption_heading(block.text)
+                and not _is_chapter_overview_heading(block.text)
             ):
                 anchor = html.escape(f"rendered-{block.block_id}", quote=True)
                 level = min(3, max(2, block.heading_level or 2))
@@ -356,7 +362,7 @@ def _render_chapter_document(
 <header class="reader-header">
 <div class="eyebrow">Chapter {chapter.index:03d}</div>
 <h1>{html.escape(chapter.title or chapter.href)}</h1>
-<p class="reader-subtitle">{len(chapter.blocks)} content blocks · {_reader_source_links(bundle, "../")}</p>
+<p class="reader-subtitle">{len(chapter.blocks)} content blocks</p>
 </header>
 <section class="chapter-content" data-translate="main">
 {_render_reader_chapter_content(chapter, "../epub-source")}
@@ -390,7 +396,7 @@ def _render_merged_document(
     body = f'''<div class="layout"><aside class="toc"><strong>目录</strong>{"".join(toc)}</aside>
 <main class="reader"><header class="reader-header"><div class="eyebrow">EPUB Reader</div>
 <h1>{html.escape(publication.title)}</h1></header>
-<p class="source-banner" translate="no">正文优先来自 EPUB；{_reader_source_links(bundle, "")}。</p>
+<p class="source-banner" translate="no">正文优先来自 EPUB。</p>
 <section class="chapter-content" data-translate="main">{"".join(content)}</section>
 </main></div>'''
     return _reader_document(
