@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up uv and Python
+        uses: astral-sh/setup-uv@v8
+        with:
+          enable-cache: true
+          python-version: "3.14"
+
+      - name: Install locked dependencies
+        run: uv sync --locked
+
+      - name: Run unit tests
+        run: uv run python -m unittest discover -s tests -v
+
+      - name: Compile project Python files
+        run: >-
+          uv run python -m compileall -q
+          book_outputs.py book_sources.py epub_parser.py
+          book-reader-builder.py book-to-sphinx.py
+          pdf-reader-builder.py pdf-to-sphinx.py pdf-chapter-extractor.py
+          tests

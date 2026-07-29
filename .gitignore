@@ -1,0 +1,31 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Generated readers, Sphinx builds, and local OS metadata
+book-web/
+output/
+.DS_Store
+
+# Local book sources (copyrighted/user-provided; never commit these files)
+source-epub/*
+!source-epub/.gitkeep
+source-pdf/*
+!source-pdf/.gitkeep
+
+# Editors and local logs
+.idea/
+.vscode/
+*.log
