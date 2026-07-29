@@ -3,7 +3,7 @@ import unittest
 import zipfile
 from pathlib import Path
 
-from book_outputs import reader_css, render_reader
+from book_outputs import reader_css, reader_script, render_reader
 from book_sources import bundle_from_input, discover_sources
 from book_sources import validate_output_dir
 from epub_parser import _resource_uri, extract_epub, parse_epub
@@ -139,6 +139,8 @@ class EpubParserTests(unittest.TestCase):
     def test_reader_themes_are_applied(self) -> None:
         self.assertIn("--bg:#f4f6f8", reader_css("light"))
         self.assertIn("--bg:#f4eee4", reader_css("sepia"))
+        self.assertIn(':root[data-theme="dark"]', reader_css())
+        self.assertIn("bookweave-theme", reader_script())
 
     def test_reader_defaults_to_chapter_pages_and_can_emit_merged_compatibility(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -161,7 +163,10 @@ class EpubParserTests(unittest.TestCase):
             self.assertIn("chapters/001-chapter-one.html", index.read_text(encoding="utf-8"))
             chapter = (target / "chapters/001-chapter-one.html").read_text(encoding="utf-8")
             self.assertIn("../assets/reader.css", chapter)
-            self.assertIn("../epub-source/OEBPS/Text/chapter.xhtml#p2", chapter)
+            self.assertIn('data-default-theme="light"', chapter)
+            self.assertIn('data-theme-toggle', chapter)
+            self.assertIn("../epub-source/OEBPS/Images/a.png", chapter)
+            self.assertNotIn("原 EPUB 片段", chapter)
             self.assertIn('<aside class="toc chapter-toc"', chapter)
             self.assertIn('class="toc-level-1 active"', chapter)
             self.assertIn('href="#rendered-epub-c0001-b0003"', chapter)

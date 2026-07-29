@@ -48,7 +48,7 @@ uv run python book-reader-builder.py --source-dir . -o ./book-web --layout both
 uv run python book-reader-builder.py --source-dir . -o ./book-web --chapter 3
 ```
 
-If both EPUB and PDF are available, EPUB provides the main content. The original EPUB is unpacked into `epub-source/` for source-reference links, while the PDF is retained for visual verification.
+If both EPUB and PDF are available, EPUB provides the main content. The original EPUB is unpacked into `epub-source/` for local assets such as images, while the PDF is retained for visual verification.
 
 The reader supports `--style dark|light|sepia`. By default it creates `index.html` and one file per chapter under `chapters/`, making each chapter easier to process with translation tools. Use `--layout merged` for the compatibility single-page output, or `--layout both` for both layouts.
 

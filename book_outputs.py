@@ -41,32 +41,17 @@ def _copy_sources(bundle: SourceBundle, static_dir: Path) -> None:
         shutil.copy2(bundle.pdf, static_dir / "source.pdf")
 
 
-def _epub_href(uri: str, prefix: str) -> str:
-    return rewrite_asset_refs(uri, prefix)
-
-
-def _epub_source_link(block: EpubBlock, prefix: str) -> str:
-    href = _epub_href(block.source_uri, prefix)
-    return (
-        f'<span class="source-ref" translate="no"><a href="{html.escape(href, quote=True)}" '
-        f'title="source={html.escape(block.source_uri, quote=True)}">'
-        "原 EPUB 片段</a></span>"
-    )
-
-
 def _render_reader_block(block: EpubBlock, source_prefix: str) -> str:
     content = rewrite_asset_refs(block.html, source_prefix)
-    source = _epub_source_link(block, source_prefix)
     anchor = html.escape(f"rendered-{block.block_id}", quote=True)
-    return f'<div class="epub-block" id="{anchor}">{content}{source}</div>'
+    return f'<div class="epub-block" id="{anchor}">{content}</div>'
 
 
-def _render_reader_heading(block: EpubBlock, source_prefix: str) -> str:
+def _render_reader_heading(block: EpubBlock) -> str:
     level = max(1, min(6, block.heading_level or 2))
     anchor = html.escape(f"rendered-{block.block_id}", quote=True)
     return (
         f'<h{level} id="{anchor}" class="reader-heading">{html.escape(block.text)}</h{level}>'
-        f"{_epub_source_link(block, source_prefix)}"
     )
 
 
@@ -74,7 +59,7 @@ def _render_reader_chapter_content(chapter, source_prefix: str) -> str:
     content: list[str] = []
     for block in chapter.blocks:
         if block.kind == "heading":
-            content.append(_render_reader_heading(block, source_prefix))
+            content.append(_render_reader_heading(block))
         else:
             content.append(_render_reader_block(block, source_prefix))
     return "\n".join(content)
@@ -120,16 +105,24 @@ READER_THEMES = {
 
 
 def reader_css(style: str = "dark") -> str:
-    theme = READER_THEMES.get(style, READER_THEMES["dark"])
-    root = (
-        f":root {{ color-scheme: {theme['color_scheme']}; "
-        f"--bg:{theme['bg']}; --surface:{theme['surface']}; --text:{theme['text']}; "
-        f"--heading:{theme['heading']}; --accent:{theme['accent']}; --muted:{theme['muted']}; "
-        f"--border:{theme['border']}; --code:{theme['code']}; "
-        f"--surface-hover:{theme['surface_hover']}; --banner:{theme['banner']}; }}"
+    def variables(theme_name: str) -> str:
+        selected = READER_THEMES[theme_name]
+        return (
+            f"color-scheme: {selected['color_scheme']}; "
+            f"--bg:{selected['bg']}; --surface:{selected['surface']}; --text:{selected['text']}; "
+            f"--heading:{selected['heading']}; --accent:{selected['accent']}; --muted:{selected['muted']}; "
+            f"--border:{selected['border']}; --code:{selected['code']}; "
+            f"--surface-hover:{selected['surface_hover']}; --banner:{selected['banner']};"
+        )
+
+    default_theme = style if style in READER_THEMES else "dark"
+    theme_rules = "\n".join(
+        f':root[data-theme="{theme_name}"] {{ {variables(theme_name)} }}'
+        for theme_name in READER_THEMES
     )
     css = """
-:root { color-scheme: dark; --bg:#11161d; --surface:#171e27; --text:#d7dee8; --heading:#f2f5f8; --accent:#78b7ff; --muted:#8996a6; --border:#2c3846; --code:#0d1218; }
+:root { __BOOKWEAVE_DEFAULT_THEME__ }
+__BOOKWEAVE_THEME_RULES__
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; background: var(--bg); }
 body { margin:0; background:var(--bg); color:var(--text); font:16px/1.78 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
@@ -176,20 +169,41 @@ a { color:var(--accent); }
 .reader table { width:100%; border-collapse:collapse; overflow:auto; display:block; }
 .reader th,.reader td { padding:.5rem .7rem; border:1px solid var(--border); text-align:left; }
 .epub-block { position:relative; }
-.source-ref { float:right; margin-left:1rem; font-size:.72rem; opacity:.65; }
-.source-ref a { text-decoration:none; }
 .source-banner { padding:.7rem 1rem; border-left:3px solid var(--accent); background:var(--banner); color:var(--muted); }
+.theme-toggle { position:fixed; top:1rem; right:1rem; z-index:10; padding:.45rem .7rem; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:999px; box-shadow:0 2px 10px rgba(0,0,0,.18); cursor:pointer; font:inherit; font-size:.78rem; }
+.theme-toggle:hover { border-color:var(--accent); color:var(--heading); }
 @media (max-width:900px) { .layout { display:block; width:min(820px,calc(100% - 2rem)); } .toc { position:relative; height:auto; max-height:35vh; margin-top:1rem; } .chapter-content { max-width:none; } }
 """
     return css.replace(
-        ":root { color-scheme: dark; --bg:#11161d; --surface:#171e27; --text:#d7dee8; --heading:#f2f5f8; --accent:#78b7ff; --muted:#8996a6; --border:#2c3846; --code:#0d1218; }",
-        root,
-    )
+        "__BOOKWEAVE_DEFAULT_THEME__", variables(default_theme)
+    ).replace("__BOOKWEAVE_THEME_RULES__", theme_rules)
 
 
 def reader_script() -> str:
     return """
 (() => {
+  const root = document.documentElement;
+  const button = document.querySelector('[data-theme-toggle]');
+  const themeKey = 'bookweave-theme';
+  const themes = new Set(['dark', 'light', 'sepia']);
+  let savedTheme = null;
+  try { savedTheme = window.localStorage.getItem(themeKey); } catch (_) {}
+  const defaultTheme = root.dataset.defaultTheme || 'dark';
+  const setTheme = (theme) => {
+    const selected = themes.has(theme) ? theme : 'dark';
+    root.dataset.theme = selected;
+    if (!button) return;
+    const next = selected === 'dark' ? 'light' : 'dark';
+    button.textContent = next === 'light' ? '浅色模式' : '深色模式';
+    button.setAttribute('aria-label', `切换到${next === 'light' ? '浅色' : '深色'}模式`);
+  };
+  setTheme(themes.has(savedTheme) ? savedTheme : defaultTheme);
+  button?.addEventListener('click', () => {
+    const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    try { window.localStorage.setItem(themeKey, next); } catch (_) {}
+  });
+
   const filter = document.querySelector('[data-chapter-filter]');
   if (!filter) return;
   const items = [...document.querySelectorAll('[data-chapter-item]')];
@@ -216,10 +230,12 @@ def _reader_document(
     body: str,
     css_href: str,
     js_href: str,
+    style: str = "dark",
 ) -> str:
     escaped_language = html.escape(language or "en", quote=True)
+    default_theme = style if style in READER_THEMES else "dark"
     return f'''<!doctype html>
-<html lang="{escaped_language}">
+<html lang="{escaped_language}" data-default-theme="{default_theme}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -227,6 +243,7 @@ def _reader_document(
 <link rel="stylesheet" href="{html.escape(css_href, quote=True)}">
 </head>
 <body>{body}
+<button class="theme-toggle" data-theme-toggle type="button" aria-label="切换到浅色模式">浅色模式</button>
 <script src="{html.escape(js_href, quote=True)}" defer></script>
 </body>
 </html>
@@ -237,6 +254,7 @@ def _render_index_document(
     bundle: SourceBundle,
     publication: EpubPublication,
     chapters: list[tuple[object, str]],
+    style: str,
 ) -> str:
     items = []
     for chapter, filename in chapters:
@@ -265,6 +283,7 @@ def _render_index_document(
         body,
         "assets/reader.css",
         "assets/reader.js",
+        style,
     )
 
 
@@ -316,6 +335,7 @@ def _render_chapter_document(
     publication: EpubPublication,
     chapters: list[tuple[object, str]],
     position: int,
+    style: str,
 ) -> str:
     chapter, _ = chapters[position]
     previous = chapters[position - 1] if position > 0 else None
@@ -349,10 +369,15 @@ def _render_chapter_document(
         body,
         "../assets/reader.css",
         "../assets/reader.js",
+        style,
     )
 
 
-def _render_merged_document(bundle: SourceBundle, publication: EpubPublication) -> str:
+def _render_merged_document(
+    bundle: SourceBundle,
+    publication: EpubPublication,
+    style: str,
+) -> str:
     toc: list[str] = []
     content: list[str] = []
     for chapter in publication.chapters:
@@ -374,6 +399,7 @@ def _render_merged_document(bundle: SourceBundle, publication: EpubPublication) 
         body,
         "assets/reader.css",
         "assets/reader.js",
+        style,
     )
 
 
@@ -409,15 +435,15 @@ def render_reader(
         chapters_dir.mkdir(parents=True, exist_ok=True)
         for position, (_, filename) in enumerate(chapters):
             (chapters_dir / filename).write_text(
-                _render_chapter_document(bundle, publication, chapters, position),
+                _render_chapter_document(bundle, publication, chapters, position, style),
                 encoding="utf-8",
             )
         (output_dir / "index.html").write_text(
-            _render_index_document(bundle, publication, chapters), encoding="utf-8"
+            _render_index_document(bundle, publication, chapters, style), encoding="utf-8"
         )
     if layout in {"merged", "both"}:
         (output_dir / "merged_book.html").write_text(
-            _render_merged_document(bundle, publication), encoding="utf-8"
+            _render_merged_document(bundle, publication, style), encoding="utf-8"
         )
     (output_dir / "README.md").write_text(
         f"# {publication.title}\n\n"
@@ -429,14 +455,6 @@ def render_reader(
     return output_dir / ("merged_book.html" if layout == "merged" else "index.html")
 
 
-def _myst_source_link(block: EpubBlock, source_prefix: str) -> str:
-    href = _epub_href(block.source_uri, source_prefix)
-    return (
-        f'<span class="source-ref" translate="no"><a href="{html.escape(href, quote=True)}" '
-        f'title="source={html.escape(block.source_uri, quote=True)}">原 EPUB 片段</a></span>'
-    )
-
-
 def _render_myst_block(
     block: EpubBlock,
     heading_level: int | None = None,
@@ -444,9 +462,9 @@ def _render_myst_block(
 ) -> str:
     if block.kind == "heading":
         level = heading_level or max(2, min(6, (block.heading_level or 2) + 1))
-        return f"{'#' * level} {block.text}\n\n{_myst_source_link(block, source_prefix)}\n\n"
+        return f"{'#' * level} {block.text}\n\n"
     content = rewrite_asset_refs(block.html, source_prefix)
-    return f'{content}\n\n{_myst_source_link(block, source_prefix)}\n\n'
+    return f"{content}\n\n"
 
 
 def _render_myst_chapter(chapter, source_prefix: str) -> str:
@@ -458,7 +476,6 @@ def _render_myst_chapter(chapter, source_prefix: str) -> str:
                 (block.heading_level or 0) == 1
                 and block.text.strip() == (chapter.title or "").strip()
             ):
-                lines.extend([_myst_source_link(block, source_prefix), ""])
                 continue
             raw_level = max(2, min(6, block.heading_level or 2))
             rendered_level = max(2, min(6, raw_level, last_heading_level + 1))
@@ -473,7 +490,7 @@ def _render_myst_merged(publication: EpubPublication) -> str:
     lines = [
         f"# {publication.title}",
         "",
-        "> 正文阅读层来自 EPUB；每个内容块保留指向原始 EPUB XHTML 的 source ref。",
+        "> 正文阅读层来自 EPUB。",
         "",
     ]
     for chapter in publication.chapters:
@@ -486,7 +503,6 @@ def _render_myst_merged(publication: EpubPublication) -> str:
                     and block.text.strip()
                     in {publication.title.strip(), (chapter.title or "").strip()}
                 ):
-                    lines.extend([_myst_source_link(block, "../_static/epub-source"), ""])
                     continue
                 raw_level = max(2, min(6, (block.heading_level or 2) + 1))
                 rendered_level = max(3, min(6, raw_level, last_heading_level + 1))
@@ -616,8 +632,6 @@ def render_sphinx(
         encoding="utf-8",
     )
     (static_dir / "custom.css").write_text(
-        ".source-ref { float:right; font-size:.78rem; opacity:.7; }\n"
-        ".source-ref a { text-decoration:none; }\n"
         "img { max-width:100%; height:auto; }\n"
         "pre { overflow-x:auto; }\n",
         encoding="utf-8",

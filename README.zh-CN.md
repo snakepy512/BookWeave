@@ -48,7 +48,7 @@ uv run python book-reader-builder.py --source-dir . -o ./book-web --layout both
 uv run python book-reader-builder.py --source-dir . -o ./book-web --chapter 3
 ```
 
-如果 EPUB 和 PDF 同时存在，正文来自 EPUB。原始 EPUB 会解压到 `epub-source/`，用于 source ref 跳转；PDF 会作为视觉核对文件保留。
+如果 EPUB 和 PDF 同时存在，正文来自 EPUB。原始 EPUB 会解压到 `epub-source/`，用于加载图片等本地资源；PDF 会作为视觉核对文件保留。
 
 阅读器支持 `--style dark|light|sepia`。默认生成 `index.html`，以及 `chapters/` 下每章一个 HTML 文件，便于翻译工具逐章处理。使用 `--layout merged` 可以生成兼容用的单页版本，使用 `--layout both` 可以同时生成两种布局。
 
