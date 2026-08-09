@@ -10,8 +10,14 @@ from pathlib import Path
 def source_key(path: Path) -> str:
     """Return a forgiving key used to pair an EPUB with its PDF."""
     value = path.stem.casefold()
-    value = re.sub(r"[^a-z0-9\u4e00-\u9fff]+", " ", value)
+    value = re.sub(r"[_\W]+", " ", value, flags=re.UNICODE)
     return re.sub(r"\s+", " ", value).strip()
+
+
+def book_id_for_key(key: str) -> str:
+    """Return a stable, filesystem-friendly directory name for a book key."""
+    value = re.sub(r"[^\w]+", "-", key.casefold(), flags=re.UNICODE).strip("-_")
+    return value[:80] or "book"
 
 
 @dataclass(frozen=True)
@@ -47,6 +53,10 @@ class SourceBundle:
             "pdf": str(self.pdf.resolve()) if self.pdf else None,
         }
 
+    @property
+    def book_id(self) -> str:
+        return book_id_for_key(self.key)
+
 
 def validate_output_dir(output_dir: Path, bundle: SourceBundle) -> Path:
     """Resolve an output directory and reject source-directory collisions."""
@@ -71,66 +81,63 @@ def _candidate_files(directory: Path, suffix: str) -> list[Path]:
     )
 
 
-def _select(candidates: list[Path], requested: str | None, kind: str) -> Path | None:
-    if not candidates:
-        return None
-    if requested:
-        requested_key = source_key(Path(requested))
-        exact = [path for path in candidates if source_key(path) == requested_key]
-        if len(exact) == 1:
-            return exact[0]
-        contains = [path for path in candidates if requested_key in source_key(path)]
-        if len(contains) == 1:
-            return contains[0]
-        if not exact and not contains:
-            raise FileNotFoundError(f"找不到匹配的 {kind.upper()} 源文件: {requested}")
-        raise RuntimeError(f"找到多个匹配的 {kind.upper()} 源文件: {requested}")
-    if len(candidates) == 1:
-        return candidates[0]
-    raise RuntimeError(
-        f"{kind.upper()} 源目录有多个文件，请使用 --book 指定: "
-        + ", ".join(path.name for path in candidates)
-    )
-
-
-def discover_sources(source_dir: Path, book: str | None = None) -> SourceBundle:
-    """Discover sources from ``source-epub`` and ``source-pdf``.
-
-    If both directories contain one file, they are paired when their normalized
-    stems match. A requested ``book`` may be a filename or a stem.
-    """
+def discover_source_bundles(source_dir: Path) -> list[SourceBundle]:
+    """Discover every book and pair EPUB/PDF files by their normalized stem."""
     root = source_dir.expanduser().resolve()
     epub_candidates = _candidate_files(root / "source-epub", ".epub")
     pdf_candidates = _candidate_files(root / "source-pdf", ".pdf")
+    grouped: dict[str, dict[str, list[Path]]] = {}
+    for kind, candidates in (("epub", epub_candidates), ("pdf", pdf_candidates)):
+        for path in candidates:
+            key = source_key(path)
+            grouped.setdefault(key, {"epub": [], "pdf": []})[kind].append(path)
 
-    if book:
-        epub = _select(epub_candidates, book, "epub")
-        pdf = _select(pdf_candidates, book, "pdf")
-        if epub is None and pdf is None:
-            raise FileNotFoundError(f"找不到书籍源文件: {book}")
-        return SourceBundle(source_key(epub or pdf), epub=epub, pdf=pdf)
-
-    if len(epub_candidates) > 1 or len(pdf_candidates) > 1:
-        all_keys = {source_key(path) for path in epub_candidates + pdf_candidates}
-        if len(all_keys) != 1:
-            raise RuntimeError(
-                "源目录包含多本书，请使用 --book 指定；候选: "
-                + ", ".join(path.name for path in epub_candidates + pdf_candidates)
-            )
-
-    epub = epub_candidates[0] if epub_candidates else None
-    pdf = pdf_candidates[0] if pdf_candidates else None
-    if epub is None and pdf is None:
+    if not grouped:
         raise FileNotFoundError(
             f"未找到源文件，请把 EPUB 放入 {root / 'source-epub'}，"
             f"或把 PDF 放入 {root / 'source-pdf'}"
         )
-    if epub and pdf and source_key(epub) != source_key(pdf):
-        raise RuntimeError(
-            "EPUB 和 PDF 文件名无法配对: "
-            f"{epub.name} / {pdf.name}。请统一文件名或使用 --book。"
+
+    bundles: list[SourceBundle] = []
+    for key in sorted(grouped):
+        files = grouped[key]
+        for kind in ("epub", "pdf"):
+            if len(files[kind]) > 1:
+                raise RuntimeError(
+                    f"同一本书存在多个 {kind.upper()} 源文件: "
+                    + ", ".join(path.name for path in files[kind])
+                )
+        bundles.append(
+            SourceBundle(
+                key,
+                epub=files["epub"][0] if files["epub"] else None,
+                pdf=files["pdf"][0] if files["pdf"] else None,
+            )
         )
-    return SourceBundle(source_key(epub or pdf), epub=epub, pdf=pdf)
+    return bundles
+
+
+def discover_sources(source_dir: Path, book: str | None = None) -> SourceBundle:
+    """Return one discovered source bundle for compatibility commands."""
+    bundles = discover_source_bundles(source_dir)
+    if book:
+        requested_key = source_key(Path(book))
+        exact = [item for item in bundles if item.key == requested_key]
+        contains = [item for item in bundles if requested_key in item.key]
+        matches = exact or contains
+        if not matches:
+            raise FileNotFoundError(f"找不到书籍源文件: {book}")
+        if len(matches) > 1:
+            raise RuntimeError(
+                f"找到多个匹配的书籍: " + ", ".join(item.key for item in matches)
+            )
+        return matches[0]
+    if len(bundles) > 1:
+        raise RuntimeError(
+            "源目录包含多本书，请使用 --book 指定，或使用书库模式；候选: "
+            + ", ".join(item.key for item in bundles)
+        )
+    return bundles[0]
 
 
 def bundle_from_input(input_path: Path) -> SourceBundle:

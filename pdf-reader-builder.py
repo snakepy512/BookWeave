@@ -22,6 +22,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+from book_library import LibraryBook, render_book_navigation
+
 try:
     import fitz
 except ImportError:
@@ -130,6 +132,10 @@ button, input {{ font: inherit; }}
 .toc-group:not([open]) > summary::before {{ content: "▸"; }}
 .toc-group > summary a {{ display: inline-block; width: calc(100% - 1.2rem); vertical-align: top; }}
 .reader {{ min-width: 0; padding: 2.5rem 0 5rem; }}
+.library-nav {{ display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem; padding-bottom:.8rem; border-bottom:1px solid var(--border); color:var(--muted); font-size:.84rem; }}
+.library-nav a {{ color:var(--accent); text-decoration:none; }}
+.library-nav label {{ display:flex; align-items:center; gap:.45rem; }}
+.library-nav select {{ max-width:min(28rem,70vw); padding:.35rem .5rem; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:7px; }}
 .reader-header {{ margin: 0 0 2.2rem; padding-bottom: 1.35rem; border-bottom: 1px solid var(--border); }}
 .eyebrow {{ color: var(--accent); font-size: .72rem; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; }}
 .reader-header h1 {{ margin: .45rem 0 .5rem; color: var(--heading); font-family: Georgia, "Times New Roman", serif; font-size: clamp(2rem, 4vw, 3rem); line-height: 1.15; letter-spacing: -.025em; }}
@@ -530,13 +536,31 @@ def reader_script() -> str:
     }, {rootMargin: '-12% 0px -72% 0px', threshold: 0});
     targets.forEach(target => observer.observe(target));
   }
+  const switcher = document.querySelector('[data-book-switcher]');
+  switcher?.addEventListener('change', () => {
+    if (switcher.value) window.location.href = switcher.value;
+  });
 })();
 </script>
 """
 
 
-def document_shell(title: str, body: str, toc: str, css: str, merged: bool, current_page: int | None = None) -> str:
+def document_shell(
+    title: str,
+    body: str,
+    toc: str,
+    css: str,
+    merged: bool,
+    current_page: int | None = None,
+    library_books: list[LibraryBook] | None = None,
+    book_id: str | None = None,
+) -> str:
     page_hint = f" · page {current_page}" if current_page is not None else ""
+    library_nav = (
+        render_book_navigation(library_books, book_id or "", "../../index.html", "../")
+        if library_books and book_id
+        else ""
+    )
     return f'''<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -549,6 +573,7 @@ def document_shell(title: str, body: str, toc: str, css: str, merged: bool, curr
 <div class="layout">
 {toc}
 <main class="reader" id="top">
+{library_nav}
 <header class="reader-header">
   <div class="eyebrow">PDF Reader</div>
   <h1>{html_escape(title)}</h1>
@@ -570,20 +595,60 @@ def page_section(page_number: int, content: str) -> str:
 </section>'''
 
 
-def generate_merged_html(title: str, pages: list[tuple[int, list[TextBlock]]], entries: list[TocEntry], css: str) -> str:
+def generate_merged_html(
+    title: str,
+    pages: list[tuple[int, list[TextBlock]]],
+    entries: list[TocEntry],
+    css: str,
+    library_books: list[LibraryBook] | None = None,
+    book_id: str | None = None,
+) -> str:
     sections = []
     for page_number, blocks in pages:
         content, _ = render_page_content(page_number, blocks, entries)
         sections.append(page_section(page_number, content))
-    return document_shell(title, "\n".join(sections), toc_html(entries, merged=True), css, merged=True)
+    return document_shell(
+        title,
+        "\n".join(sections),
+        toc_html(entries, merged=True),
+        css,
+        merged=True,
+        library_books=library_books,
+        book_id=book_id,
+    )
 
 
-def generate_single_html(title: str, page_number: int, blocks: list[TextBlock], entries: list[TocEntry], css: str) -> str:
+def generate_single_html(
+    title: str,
+    page_number: int,
+    blocks: list[TextBlock],
+    entries: list[TocEntry],
+    css: str,
+    library_books: list[LibraryBook] | None = None,
+    book_id: str | None = None,
+) -> str:
     content, _ = render_page_content(page_number, blocks, entries)
-    return document_shell(title, page_section(page_number, content), toc_html(entries, merged=False, current_page=page_number), css, merged=False, current_page=page_number)
+    return document_shell(
+        title,
+        page_section(page_number, content),
+        toc_html(entries, merged=False, current_page=page_number),
+        css,
+        merged=False,
+        current_page=page_number,
+        library_books=library_books,
+        book_id=book_id,
+    )
 
 
-def process_pdf(pdf_path: str, output_dir: str, merge: bool, style: str) -> Path:
+def process_pdf(
+    pdf_path: str,
+    output_dir: str,
+    merge: bool,
+    style: str,
+    *,
+    library_books: list[LibraryBook] | None = None,
+    book_id: str | None = None,
+) -> Path:
     pdf_path = Path(pdf_path)
     out_dir = Path(output_dir)
     if not pdf_path.exists():
@@ -613,14 +678,27 @@ def process_pdf(pdf_path: str, output_dir: str, merge: bool, style: str) -> Path
             print(f"   📝 Pages {page_number}/{total}...", end="\r")
 
     if merge:
-        html_content = generate_merged_html(title, pages, entries, css)
+        html_content = generate_merged_html(
+            title, pages, entries, css, library_books=library_books, book_id=book_id
+        )
         fp = out_dir / "merged_book.html"
         fp.write_text(html_content, encoding="utf-8")
         print(f"\n   ✅ Written: {fp}")
     else:
         for page_number, blocks in pages:
             fp = out_dir / f"page_{page_number:04d}.html"
-            fp.write_text(generate_single_html(title, page_number, blocks, entries, css), encoding="utf-8")
+            fp.write_text(
+                generate_single_html(
+                    title,
+                    page_number,
+                    blocks,
+                    entries,
+                    css,
+                    library_books=library_books,
+                    book_id=book_id,
+                ),
+                encoding="utf-8",
+            )
             if page_number % 100 == 0 or page_number == total:
                 print(f"\n   ✅ Pages {page_number}/{total}")
 

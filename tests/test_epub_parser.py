@@ -1,12 +1,26 @@
+import contextlib
+import io
 import tempfile
 import unittest
 import zipfile
+import importlib.util
 from pathlib import Path
+from unittest.mock import patch
 
 from book_outputs import reader_css, reader_script, render_reader
-from book_sources import bundle_from_input, discover_sources
+from book_sources import bundle_from_input, discover_source_bundles, discover_sources
 from book_sources import validate_output_dir
 from epub_parser import _resource_uri, extract_epub, parse_epub
+
+
+def load_builder():
+    script = Path(__file__).parents[1] / "book-reader-builder.py"
+    spec = importlib.util.spec_from_file_location("book_reader_builder_test", script)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"无法加载 builder: {script}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def write_fixture(path: Path) -> None:
@@ -84,6 +98,75 @@ def write_epub3_fixture(path: Path) -> None:
 
 
 class EpubParserTests(unittest.TestCase):
+    def test_discovers_multiple_books_and_pairs_each_representation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            epub_dir = root / "source-epub"
+            pdf_dir = root / "source-pdf"
+            epub_dir.mkdir()
+            pdf_dir.mkdir()
+            write_fixture(epub_dir / "alpha.epub")
+            write_epub3_fixture(epub_dir / "beta.epub")
+            (pdf_dir / "alpha.pdf").write_bytes(b"pdf")
+
+            bundles = discover_source_bundles(root)
+            self.assertEqual([bundle.key for bundle in bundles], ["alpha", "beta"])
+            self.assertTrue(bundles[0].paired)
+            self.assertIsNone(bundles[1].pdf)
+            with self.assertRaises(RuntimeError):
+                discover_sources(root)
+            self.assertEqual(discover_sources(root, "beta").key, "beta")
+
+    def test_library_index_and_book_pages_link_to_each_other(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            epub_dir = root / "source-epub"
+            pdf_dir = root / "source-pdf"
+            epub_dir.mkdir()
+            pdf_dir.mkdir()
+            alpha = epub_dir / "alpha.epub"
+            beta = epub_dir / "beta.epub"
+            write_fixture(alpha)
+            write_epub3_fixture(beta)
+            bundles = discover_source_bundles(root)
+            target = root / "book-web"
+            builder = load_builder()
+            builder.build_library(bundles, target, "dark", False, "chapter")
+            self.assertIn("books/alpha/index.html", (target / "index.html").read_text(encoding="utf-8"))
+            self.assertIn('"book_id": "beta"', (target / "library.json").read_text(encoding="utf-8"))
+            index = (target / "books/alpha/index.html").read_text(encoding="utf-8")
+            chapter = (target / "books/alpha/chapters/001-chapter-one.html").read_text(encoding="utf-8")
+            self.assertIn('../beta/index.html', index)
+            self.assertIn('../../beta/index.html', chapter)
+
+    def test_single_book_source_build_has_a_library_landing_page(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            epub_dir = root / "source-epub"
+            epub_dir.mkdir()
+            write_fixture(epub_dir / "only-book.epub")
+            target = root / "book-web"
+            builder = load_builder()
+
+            with (
+                patch.object(
+                    builder.sys,
+                    "argv",
+                    [
+                        "book-reader-builder.py",
+                        "--source-dir",
+                        str(root),
+                        "--output-dir",
+                        str(target),
+                    ],
+                ),
+                contextlib.redirect_stdout(io.StringIO()),
+            ):
+                self.assertEqual(builder.main(), 0)
+
+            self.assertIn("共 1 本书", (target / "index.html").read_text(encoding="utf-8"))
+            self.assertTrue((target / "books/only-book/index.html").is_file())
+
     def test_parses_epub2_spine_ncx_and_source_ids(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             epub = Path(directory) / "fixture.epub"

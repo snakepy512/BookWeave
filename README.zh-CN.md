@@ -50,6 +50,10 @@ uv run python book-reader-builder.py --source-dir . -o ./book-web --chapter 3
 
 如果 EPUB 和 PDF 同时存在，正文来自 EPUB。原始 EPUB 会解压到 `epub-source/`，用于加载图片等本地资源；PDF 会作为视觉核对文件保留。
 
+扫描 `source-epub/` 或 `source-pdf/` 时，同一条命令始终会生成一个静态书库：`book-web/index.html` 展示所有发现的书籍（包括只有一本书的情况），每本书位于 `book-web/books/<book-id>/` 下。生成的 EPUB/PDF 页面都提供返回书库和切换书籍入口。使用 `--book NAME` 则只构建指定书籍。
+
+EPUB 和 PDF 会按规范化后的文件名 stem 配对，例如 `source-epub/design.epub` 与 `source-pdf/design.pdf` 会被视为同一本书。生成的 `library.json` 保存书库目录信息，不包含本地绝对源文件路径。
+
 阅读器支持 `--style dark|light|sepia`。默认生成 `index.html`，以及 `chapters/` 下每章一个 HTML 文件，便于翻译工具逐章处理。使用 `--layout merged` 可以生成兼容用的单页版本，使用 `--layout both` 可以同时生成两种布局。
 
 生成的 `book-web/` 和 `output/` 目录可以随时重新生成，不应提交到版本控制。

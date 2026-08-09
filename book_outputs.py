@@ -10,6 +10,7 @@ import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
+from book_library import LibraryBook, render_book_navigation
 from book_sources import SourceBundle, validate_output_dir
 from epub_parser import EpubBlock, EpubPublication, extract_epub, rewrite_asset_refs
 
@@ -184,6 +185,16 @@ a { color:var(--accent); }
 .source-banner { padding:.7rem 1rem; border-left:3px solid var(--accent); background:var(--banner); color:var(--muted); }
 .theme-toggle { position:fixed; top:1rem; right:1rem; z-index:10; padding:.45rem .7rem; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:999px; box-shadow:0 2px 10px rgba(0,0,0,.18); cursor:pointer; font:inherit; font-size:.78rem; }
 .theme-toggle:hover { border-color:var(--accent); color:var(--heading); }
+.library-nav { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem; padding-bottom:.8rem; border-bottom:1px solid var(--border); color:var(--muted); font-size:.84rem; }
+.library-nav a { color:var(--accent); text-decoration:none; }
+.library-nav label { display:flex; align-items:center; gap:.45rem; }
+.library-nav select { max-width:min(28rem,70vw); padding:.35rem .5rem; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:7px; }
+.library-list { display:grid; gap:.65rem; padding:0; list-style:none; }
+.library-list li { margin:0; }
+.library-card { display:flex; align-items:baseline; gap:1rem; padding:1rem 1.1rem; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:10px; text-decoration:none; }
+.library-card:hover { border-color:var(--accent); background:var(--surface-hover); }
+.library-card-title { color:var(--heading); font:1.1rem Georgia,serif; }
+.library-card-meta { margin-left:auto; color:var(--muted); font-size:.78rem; }
 @media (max-width:900px) { .layout { display:block; width:min(820px,calc(100% - 2rem)); } .toc { position:relative; height:auto; max-height:35vh; margin-top:1rem; } .chapter-content { max-width:none; } }
 """
     return css.replace(
@@ -217,13 +228,28 @@ def reader_script() -> str:
   });
 
   const filter = document.querySelector('[data-chapter-filter]');
-  if (!filter) return;
-  const items = [...document.querySelectorAll('[data-chapter-item]')];
-  filter.addEventListener('input', () => {
-    const query = filter.value.trim().toLowerCase();
-    items.forEach(item => {
-      item.hidden = Boolean(query) && !item.textContent.toLowerCase().includes(query);
+  if (filter) {
+    const items = [...document.querySelectorAll('[data-chapter-item]')];
+    filter.addEventListener('input', () => {
+      const query = filter.value.trim().toLowerCase();
+      items.forEach(item => {
+        item.hidden = Boolean(query) && !item.textContent.toLowerCase().includes(query);
+      });
     });
+  }
+  const bookFilter = document.querySelector('[data-book-filter]');
+  if (bookFilter) {
+    const books = [...document.querySelectorAll('[data-book-item]')];
+    bookFilter.addEventListener('input', () => {
+      const query = bookFilter.value.trim().toLowerCase();
+      books.forEach(book => {
+        book.hidden = Boolean(query) && !book.textContent.toLowerCase().includes(query);
+      });
+    });
+  }
+  const switcher = document.querySelector('[data-book-switcher]');
+  switcher?.addEventListener('change', () => {
+    if (switcher.value) window.location.href = switcher.value;
   });
 })();
 """
@@ -260,6 +286,7 @@ def _render_index_document(
     publication: EpubPublication,
     chapters: list[tuple[object, str]],
     style: str,
+    library_books: list[LibraryBook] | None = None,
 ) -> str:
     items = []
     for chapter, filename in chapters:
@@ -269,7 +296,13 @@ def _render_index_document(
             f'<span>{html.escape(chapter.title or chapter.href)}</span>'
             f'<span class="chapter-meta">{len(chapter.blocks)} blocks</span></a></li>'
         )
+    library_nav = (
+        render_book_navigation(library_books, bundle.book_id, "../../index.html", "../")
+        if library_books
+        else ""
+    )
     body = f'''<div class="layout"><main class="reader">
+{library_nav}
 <header class="reader-header">
 <div class="eyebrow">EPUB Reader</div>
 <h1>{html.escape(publication.title)}</h1>
@@ -342,6 +375,7 @@ def _render_chapter_document(
     chapters: list[tuple[object, str]],
     position: int,
     style: str,
+    library_books: list[LibraryBook] | None = None,
 ) -> str:
     chapter, _ = chapters[position]
     previous = chapters[position - 1] if position > 0 else None
@@ -353,9 +387,15 @@ def _render_chapter_document(
         navigation.append(f'<a href="{html.escape(following[1], quote=True)}">下一章 →</a>')
     nav_links = "".join(navigation)
     chapter_toc = _render_chapter_toc(chapters, chapter)
+    library_nav = (
+        render_book_navigation(library_books, bundle.book_id, "../../index.html", "../../")
+        if library_books
+        else ""
+    )
     body = f'''<div class="layout">
 {chapter_toc}
 <main class="reader">
+{library_nav}
 <nav class="reader-nav" aria-label="章节导航">
 <a href="../index.html">← 返回目录</a><span class="reader-nav-links">{nav_links}</span>
 </nav>
@@ -383,6 +423,7 @@ def _render_merged_document(
     bundle: SourceBundle,
     publication: EpubPublication,
     style: str,
+    library_books: list[LibraryBook] | None = None,
 ) -> str:
     toc: list[str] = []
     content: list[str] = []
@@ -393,8 +434,13 @@ def _render_merged_document(
         content.append(f'<section id="{chapter_anchor}"><h2>{html.escape(title)}</h2>')
         content.append(_render_reader_chapter_content(chapter, "epub-source"))
         content.append("</section>")
+    library_nav = (
+        render_book_navigation(library_books, bundle.book_id, "../../index.html", "../")
+        if library_books
+        else ""
+    )
     body = f'''<div class="layout"><aside class="toc"><strong>目录</strong>{"".join(toc)}</aside>
-<main class="reader"><header class="reader-header"><div class="eyebrow">EPUB Reader</div>
+<main class="reader">{library_nav}<header class="reader-header"><div class="eyebrow">EPUB Reader</div>
 <h1>{html.escape(publication.title)}</h1></header>
 <p class="source-banner" translate="no">正文优先来自 EPUB。</p>
 <section class="chapter-content" data-translate="main">{"".join(content)}</section>
@@ -416,6 +462,7 @@ def render_reader(
     style: str = "dark",
     layout: str = "chapter",
     chapter_number: int | None = None,
+    library_books: list[LibraryBook] | None = None,
 ) -> Path:
     """Write chapter HTML pages, optionally alongside a merged compatibility page."""
     if layout not in {"chapter", "merged", "both"}:
@@ -441,15 +488,21 @@ def render_reader(
         chapters_dir.mkdir(parents=True, exist_ok=True)
         for position, (_, filename) in enumerate(chapters):
             (chapters_dir / filename).write_text(
-                _render_chapter_document(bundle, publication, chapters, position, style),
+                _render_chapter_document(
+                    bundle, publication, chapters, position, style, library_books
+                ),
                 encoding="utf-8",
             )
         (output_dir / "index.html").write_text(
-            _render_index_document(bundle, publication, chapters, style), encoding="utf-8"
+            _render_index_document(
+                bundle, publication, chapters, style, library_books
+            ),
+            encoding="utf-8",
         )
     if layout in {"merged", "both"}:
         (output_dir / "merged_book.html").write_text(
-            _render_merged_document(bundle, publication, style), encoding="utf-8"
+            _render_merged_document(bundle, publication, style, library_books),
+            encoding="utf-8",
         )
     (output_dir / "README.md").write_text(
         f"# {publication.title}\n\n"
