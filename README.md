@@ -50,6 +50,10 @@ uv run python book-reader-builder.py --source-dir . -o ./book-web --chapter 3
 
 If both EPUB and PDF are available, EPUB provides the main content. The original EPUB is unpacked into `epub-source/` for local assets such as images, while the PDF is retained for visual verification.
 
+When scanning `source-epub/` or `source-pdf/`, the same command always builds a static library: `book-web/index.html` lists every discovered book (including a single book), and each book is written below `book-web/books/<book-id>/`. Every generated EPUB/PDF page includes a library link and a book switcher. Use `--book NAME` to build one book only.
+
+EPUB and PDF files are paired when their normalized filename stems match, for example `source-epub/design.epub` and `source-pdf/design.pdf`. The generated `library.json` contains the book catalog without copying absolute source paths.
+
 The reader supports `--style dark|light|sepia`. By default it creates `index.html` and one file per chapter under `chapters/`, making each chapter easier to process with translation tools. Use `--layout merged` for the compatibility single-page output, or `--layout both` for both layouts.
 
 Generated `book-web/` and `output/` directories can be recreated at any time and should not be committed.
