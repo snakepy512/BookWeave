@@ -48,6 +48,25 @@ class LibraryBook:
         }
 
 
+def render_reader_controls() -> str:
+    """Render the shared controls used by every generated reader page."""
+    return '''<div class="reader-controls" aria-label="阅读器工具">
+<button class="sidebar-toggle" data-sidebar-toggle type="button" aria-label="打开目录" aria-expanded="false">目录</button>
+<button class="search-trigger" data-search-open type="button">搜索 <kbd>⌘ K</kbd></button>
+<label class="theme-control">主题
+<select data-theme-select aria-label="选择显示主题">
+<option value="system">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option><option value="sepia">护眼</option>
+</select></label>
+</div>
+<dialog class="search-dialog" data-search-dialog aria-label="搜索此阅读器">
+<form method="dialog" class="search-panel">
+<div class="search-panel-header"><label>搜索<input data-search-input type="search" placeholder="搜索章节、标题或书名" autocomplete="off"></label><button type="submit" aria-label="关闭搜索">关闭</button></div>
+<p class="search-hint">使用 ↑ ↓ 选择，Enter 打开，Esc 关闭</p>
+<ul class="search-results" data-search-results></ul>
+</form>
+</dialog>'''
+
+
 def render_book_navigation(
     books: list[LibraryBook],
     current_book_id: str,
@@ -139,7 +158,7 @@ def render_library_index(
 <link rel="stylesheet" href="assets/reader.css">
 </head>
 <body>{body}
-<button class="theme-toggle" data-theme-toggle type="button" aria-label="切换到浅色模式">浅色模式</button>
+{render_reader_controls()}
 <script src="assets/reader.js" defer></script>
 </body>
 </html>

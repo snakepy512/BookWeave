@@ -225,6 +225,8 @@ class EpubParserTests(unittest.TestCase):
         self.assertIn("--bg:#f4eee4", reader_css("sepia"))
         self.assertIn(':root[data-theme="dark"]', reader_css())
         self.assertIn("bookweave-theme", reader_script())
+        self.assertIn("data-search-open", reader_script())
+        self.assertIn("prefers-color-scheme", reader_script())
 
     def test_reader_defaults_to_chapter_pages_and_can_emit_merged_compatibility(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -248,7 +250,8 @@ class EpubParserTests(unittest.TestCase):
             chapter = (target / "chapters/001-chapter-one.html").read_text(encoding="utf-8")
             self.assertIn("../assets/reader.css", chapter)
             self.assertIn('data-default-theme="light"', chapter)
-            self.assertIn('data-theme-toggle', chapter)
+            self.assertIn('data-theme-select', chapter)
+            self.assertIn('data-search-dialog', chapter)
             self.assertIn("../epub-source/OEBPS/Images/a.png", chapter)
             self.assertNotIn("原 EPUB 片段", chapter)
             self.assertNotIn("下载原始 EPUB", chapter)
@@ -261,7 +264,7 @@ class EpubParserTests(unittest.TestCase):
             toc = chapter.split('<section class="chapter-content"', 1)[0]
             self.assertNotIn("Figure 1.1 Caption", toc)
             self.assertNotIn("This chapter covers", toc)
-            self.assertIn("minmax(0,1fr)", (target / "assets/reader.css").read_text(encoding="utf-8"))
+            self.assertIn("minmax(0,48rem)", (target / "assets/reader.css").read_text(encoding="utf-8"))
 
             render_reader(bundle, publication, target, layout="both")
             self.assertTrue((target / "merged_book.html").is_file())

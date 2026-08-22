@@ -12,6 +12,14 @@ pdf_to_sphinx = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = pdf_to_sphinx
 SPEC.loader.exec_module(pdf_to_sphinx)
 
+READER_SCRIPT = Path(__file__).parents[1] / "pdf-reader-builder.py"
+READER_SPEC = importlib.util.spec_from_file_location("pdf_reader_builder_test", READER_SCRIPT)
+if READER_SPEC is None or READER_SPEC.loader is None:
+    raise RuntimeError(f"无法加载 {READER_SCRIPT}")
+pdf_reader = importlib.util.module_from_spec(READER_SPEC)
+sys.modules[READER_SPEC.name] = pdf_reader
+READER_SPEC.loader.exec_module(pdf_reader)
+
 
 class PdfToSphinxTests(unittest.TestCase):
     def test_fence_is_longer_than_embedded_backtick_run(self) -> None:
@@ -74,6 +82,19 @@ class PdfToSphinxTests(unittest.TestCase):
         )
         rendered = pdf_to_sphinx.style_markdown_text(block)
         self.assertIn('style="color: #cc3300"', rendered)
+
+    def test_pdf_reader_emits_shared_document_controls(self) -> None:
+        document = pdf_reader.generate_merged_html(
+            "Demo",
+            [(1, [])],
+            [],
+            pdf_reader.css_for("light"),
+            style="light",
+        )
+        self.assertIn('data-default-theme="light"', document)
+        self.assertIn('data-search-dialog', document)
+        self.assertIn('data-theme-select', document)
+        self.assertIn(':root[data-theme="dark"]', pdf_reader.css_for("light"))
 
 
 if __name__ == "__main__":

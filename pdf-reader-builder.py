@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from book_library import LibraryBook, render_book_navigation
+from book_library import LibraryBook, render_book_navigation, render_reader_controls
 
 try:
     import fitz
@@ -82,14 +82,27 @@ class TextBlock:
 
 
 def css_for(theme_name: str) -> str:
-    t = THEMES.get(theme_name, THEMES["dark"])
+    def variables(theme: dict[str, str], color_scheme: str) -> str:
+        return (
+            f"color-scheme:{color_scheme}; --bg:{theme['bg']}; --surface:{theme['surface']}; "
+            f"--surface-raised:{theme['surface_raised']}; --text:{theme['text']}; "
+            f"--heading:{theme['heading']}; --accent:{theme['accent']}; "
+            f"--accent-soft:{theme['accent_soft']}; --muted:{theme['muted']}; "
+            f"--border:{theme['border']}; --code-bg:{theme['code_bg']}; "
+            f"--select:{theme['select']}; --shadow:{theme['shadow']};"
+        )
+
+    default_name = theme_name if theme_name in THEMES else "dark"
+    t = THEMES[default_name]
+    theme_rules = "\n".join(
+        f':root[data-theme="{name}"] {{ {variables(theme, "dark" if name == "dark" else "light")} }}'
+        for name, theme in THEMES.items()
+    )
     return f"""
 :root {{
-    --bg: {t['bg']}; --surface: {t['surface']}; --surface-raised: {t['surface_raised']};
-    --text: {t['text']}; --heading: {t['heading']}; --accent: {t['accent']};
-    --accent-soft: {t['accent_soft']}; --muted: {t['muted']}; --border: {t['border']};
-    --code-bg: {t['code_bg']}; --select: {t['select']}; --shadow: {t['shadow']};
+    {variables(t, "dark" if default_name == "dark" else "light")}
 }}
+{theme_rules}
 *, *::before, *::after {{ box-sizing: border-box; }}
 html {{ scroll-behavior: smooth; background: var(--bg); }}
 body {{
@@ -173,10 +186,18 @@ button, input {{ font: inherit; }}
 .callout p {{ margin: 0; font-size: .95rem; }}
 .anchor {{ display: block; position: relative; top: -1.5rem; visibility: hidden; }}
 .footer-hint {{ margin-top: 3rem; padding-top: 1.2rem; border-top: 1px solid var(--border); color: var(--muted); font-size: .78rem; line-height: 1.6; }}
+.reader-controls {{ position:fixed; z-index:20; top:.85rem; right:clamp(1rem,3vw,3rem); display:flex; align-items:center; gap:.45rem; padding:.3rem; border:1px solid var(--border); border-radius:.55rem; background:color-mix(in srgb,var(--bg) 88%,transparent); backdrop-filter:blur(10px); }}
+.reader-controls button,.reader-controls select {{ border:0; border-radius:.32rem; color:var(--muted); background:transparent; font-size:.77rem; padding:.4rem .5rem; }}
+.reader-controls button:hover,.reader-controls select:hover {{ color:var(--heading); background:var(--accent-soft); }}
+.reader-controls kbd {{ margin-left:.3rem; padding:.08rem .25rem; border:1px solid var(--border); border-radius:.22rem; font:.68rem ui-monospace,monospace; }}
+.theme-control {{ display:flex; align-items:center; gap:.15rem; color:var(--muted); font-size:.72rem; }} .sidebar-toggle {{ display:none; }}
+.search-dialog {{ width:min(42rem,calc(100vw - 2rem)); border:1px solid var(--border); border-radius:.7rem; padding:0; color:var(--text); background:var(--surface); box-shadow:0 20px 60px rgba(0,0,0,.25); }}
+.search-dialog::backdrop {{ background:rgba(0,0,0,.35); }} .search-panel {{ padding:.75rem; }} .search-panel-header {{ display:flex; align-items:center; gap:.75rem; }} .search-panel-header label {{ flex:1; }} .search-panel-header input {{ width:100%; border:0; outline:0; color:var(--text); background:transparent; font-size:1rem; }} .search-panel-header button {{ border:1px solid var(--border); border-radius:.35rem; color:var(--muted); background:var(--bg); padding:.3rem .45rem; }} .search-hint {{ margin:.65rem 0 .35rem; color:var(--muted); font: .73rem/1.4 -apple-system,sans-serif; }} .search-results {{ max-height:min(55vh,28rem); overflow:auto; margin:0; padding:0; list-style:none; }} .search-results a {{ display:block; padding:.65rem .6rem; border-radius:.35rem; color:var(--text); }} .search-results a:hover,.search-results a[aria-selected="true"] {{ background:var(--accent-soft); text-decoration:none; }} .search-results small {{ display:block; color:var(--muted); }}
 ::selection {{ background: var(--select); }}
 @media (max-width: 980px) {{
     .layout {{ display: block; width: min(800px, calc(100% - 2rem)); }}
-    .toc {{ position: relative; top: auto; height: auto; max-height: 38vh; margin-top: 1rem; }}
+    .toc {{ position:fixed; z-index:15; top:0; bottom:0; left:0; width:min(20rem,88vw); height:auto; max-height:none; margin:0; padding-top:5rem; border:0; border-right:1px solid var(--border); border-radius:0; background:var(--surface); box-shadow:12px 0 36px var(--shadow); transform:translateX(-105%); transition:transform .18s ease; }}
+    .sidebar-open .toc {{ transform:translateX(0); }} .sidebar-toggle {{ display:inline-block; }}
     .reader {{ padding-top: 2rem; }}
 }}
 @media (max-width: 620px) {{
@@ -185,6 +206,7 @@ button, input {{ font: inherit; }}
     .reader {{ padding-top: 1.25rem; }}
     .page-block {{ padding-right: .65rem; padding-left: .65rem; margin-right: -.65rem; margin-left: -.65rem; }}
     .page-content p {{ font-size: 1rem; }}
+    .reader-controls {{ left:.5rem; right:.5rem; justify-content:space-between; }} .theme-control {{ display:none; }} .search-trigger kbd {{ display:none; }}
 }}
 """
 
@@ -502,6 +524,27 @@ def reader_script() -> str:
     return """
 <script>
 (() => {
+  const root = document.documentElement;
+  const themeKey = 'bookweave-theme';
+  const themeSelect = document.querySelector('[data-theme-select]');
+  const themes = new Set(['system', 'dark', 'light', 'sepia']);
+  let savedTheme = null;
+  try { savedTheme = window.localStorage.getItem(themeKey); } catch (_) {}
+  const setTheme = (choice) => {
+    const selected = themes.has(choice) ? choice : 'system';
+    root.dataset.theme = selected === 'system'
+      ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : selected;
+    root.dataset.themePreference = selected;
+    if (themeSelect) themeSelect.value = selected;
+  };
+  setTheme(themes.has(savedTheme) ? savedTheme : (root.dataset.defaultTheme || 'dark'));
+  themeSelect?.addEventListener('change', () => {
+    setTheme(themeSelect.value);
+    try { window.localStorage.setItem(themeKey, themeSelect.value); } catch (_) {}
+  });
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => {
+    if (root.dataset.themePreference === 'system') setTheme('system');
+  });
   const filter = document.querySelector('.toc-filter');
   const links = [...document.querySelectorAll('.toc-list a[data-target]')];
   const groups = [...document.querySelectorAll('.toc-group')];
@@ -540,6 +583,52 @@ def reader_script() -> str:
   switcher?.addEventListener('change', () => {
     if (switcher.value) window.location.href = switcher.value;
   });
+  const sidebarToggle = document.querySelector('[data-sidebar-toggle]');
+  sidebarToggle?.addEventListener('click', () => {
+    const open = root.classList.toggle('sidebar-open');
+    sidebarToggle.setAttribute('aria-expanded', String(open));
+  });
+  const dialog = document.querySelector('[data-search-dialog]');
+  const searchInput = document.querySelector('[data-search-input]');
+  const results = document.querySelector('[data-search-results]');
+  const searchItems = [...document.querySelectorAll('.toc a, .library-nav a')]
+    .map(item => ({ title: item.textContent.replace(/\\s+/g, ' ').trim(), href: item.href }))
+    .filter(item => item.title && item.href);
+  const escapeHtml = value => value.replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[char]);
+  let selectedResult = 0;
+  const renderResults = () => {
+    if (!results || !searchInput) return;
+    const query = searchInput.value.trim().toLowerCase();
+    const matches = searchItems.filter(item => !query || item.title.toLowerCase().includes(query)).slice(0, 12);
+    selectedResult = Math.min(selectedResult, Math.max(0, matches.length - 1));
+    results.innerHTML = matches.length
+      ? matches.map((item, index) => `<li><a href="${escapeHtml(item.href)}" aria-selected="${index === selectedResult}">${escapeHtml(item.title)}<small>打开阅读位置</small></a></li>`).join('')
+      : '<li class="search-hint">没有匹配结果</li>';
+  };
+  document.querySelector('[data-search-open]')?.addEventListener('click', () => {
+    if (!dialog?.showModal) return;
+    dialog.showModal(); searchInput?.focus(); renderResults();
+  });
+  searchInput?.addEventListener('input', () => { selectedResult = 0; renderResults(); });
+  dialog?.addEventListener('keydown', event => {
+    if (!results) return;
+    const links = [...results.querySelectorAll('a')];
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      selectedResult = (selectedResult + (event.key === 'ArrowDown' ? 1 : -1) + links.length) % (links.length || 1);
+      renderResults();
+    } else if (event.key === 'Enter' && links[selectedResult]) {
+      event.preventDefault(); links[selectedResult].click();
+    }
+  });
+  document.addEventListener('keydown', event => {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+      event.preventDefault(); document.querySelector('[data-search-open]')?.click();
+    }
+    if (event.key === 'Escape' && root.classList.contains('sidebar-open')) {
+      root.classList.remove('sidebar-open'); sidebarToggle?.setAttribute('aria-expanded', 'false');
+    }
+  });
 })();
 </script>
 """
@@ -554,6 +643,7 @@ def document_shell(
     current_page: int | None = None,
     library_books: list[LibraryBook] | None = None,
     book_id: str | None = None,
+    style: str = "dark",
 ) -> str:
     page_hint = f" · page {current_page}" if current_page is not None else ""
     library_nav = (
@@ -562,7 +652,7 @@ def document_shell(
         else ""
     )
     return f'''<!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-default-theme="{html_escape(style)}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -583,6 +673,7 @@ def document_shell(
 <div class="footer-hint">Generated by <b>pdf-reader-builder.py</b> · {datetime.now().strftime('%Y-%m-%d %H:%M')}<br>Use Ctrl+F / Cmd+F to search · 配合「沉浸式翻译」插件进行中英双语阅读</div>
 </main>
 </div>
+{render_reader_controls()}
 {reader_script()}
 </body>
 </html>'''
@@ -600,6 +691,7 @@ def generate_merged_html(
     pages: list[tuple[int, list[TextBlock]]],
     entries: list[TocEntry],
     css: str,
+    style: str = "dark",
     library_books: list[LibraryBook] | None = None,
     book_id: str | None = None,
 ) -> str:
@@ -615,6 +707,7 @@ def generate_merged_html(
         merged=True,
         library_books=library_books,
         book_id=book_id,
+        style=style,
     )
 
 
@@ -624,6 +717,7 @@ def generate_single_html(
     blocks: list[TextBlock],
     entries: list[TocEntry],
     css: str,
+    style: str = "dark",
     library_books: list[LibraryBook] | None = None,
     book_id: str | None = None,
 ) -> str:
@@ -637,6 +731,7 @@ def generate_single_html(
         current_page=page_number,
         library_books=library_books,
         book_id=book_id,
+        style=style,
     )
 
 
@@ -679,7 +774,7 @@ def process_pdf(
 
     if merge:
         html_content = generate_merged_html(
-            title, pages, entries, css, library_books=library_books, book_id=book_id
+            title, pages, entries, css, style, library_books=library_books, book_id=book_id
         )
         fp = out_dir / "merged_book.html"
         fp.write_text(html_content, encoding="utf-8")
@@ -694,6 +789,7 @@ def process_pdf(
                     blocks,
                     entries,
                     css,
+                    style,
                     library_books=library_books,
                     book_id=book_id,
                 ),
