@@ -1,50 +1,52 @@
-# 本地部署
+# Local deployment
 
-此目录用于把 BookWeave 生成的 `book-web/` 作为仅本机可访问的静态站点运行。默认监听 `127.0.0.1:8765`，不会暴露到局域网或互联网。
+[简体中文](README.zh-CN.md)
 
-## 前置条件
+This directory runs the BookWeave-generated `book-web/` as a static site that is accessible only on the local machine. By default, it listens on `127.0.0.1:8765` and is not exposed to your LAN or the internet.
 
-- Python 3.14 与 [uv](https://docs.astral.sh/uv/)
-- [Caddy](https://caddyserver.com/docs/install)，macOS 可运行 `brew install caddy`
-- 在仓库根目录的 `source-epub/` 和/或 `source-pdf/` 放入有权使用的书籍文件
+## Prerequisites
 
-## 启动
+- Python 3.14 and [uv](https://docs.astral.sh/uv/)
+- [Caddy](https://caddyserver.com/docs/install); on macOS, run `brew install caddy`
+- One or more books you are permitted to use in the repository root's `source-epub/` and/or `source-pdf/` directories
 
-在仓库根目录运行：
+## Start
+
+From the repository root, run:
 
 ```bash
 ./local-deployment/start.sh
 ```
 
-脚本会先生成最新的 `book-web/`，随后在前台启动 Caddy。浏览器访问 <http://127.0.0.1:8765>；在终端按 `Ctrl+C` 停止服务。
+The script generates an up-to-date `book-web/`, then starts Caddy in the foreground. Open <http://127.0.0.1:8765> and press `Ctrl+C` in the terminal to stop it.
 
-脚本不会提交或上传书籍与生成产物。它只在本机读取源文件，并将静态文件服务于本机回环地址。
+The script never commits or uploads books or generated output. It reads source files locally and serves the static site only through the loopback address.
 
-## 常用配置
+## Common options
 
-使用另一个端口：
+Use a different port:
 
 ```bash
 BOOKWEAVE_PORT=9000 ./local-deployment/start.sh
 ```
 
-已有最新 `book-web/` 时跳过构建：
+Skip the build when `book-web/` is already current:
 
 ```bash
 BOOKWEAVE_SKIP_BUILD=1 ./local-deployment/start.sh
 ```
 
-局域网访问（请只在受信任的网络中使用）：
+Allow access from your local network (only on a trusted network):
 
 ```bash
 BOOKWEAVE_HOST=0.0.0.0 ./local-deployment/start.sh
 ```
 
-这会使书籍内容可被同一局域网中知道你的 Mac IP 和端口的设备读取。若不需要局域网访问，请保持默认的 `127.0.0.1`。
+This makes book content available to devices on the same network that know your Mac's IP address and port. Keep the default `127.0.0.1` when LAN access is not needed.
 
-## 文件说明
+## Files
 
-- `start.sh`：检查依赖、生成静态站点并启动服务。
-- `Caddyfile`：Caddy 的静态文件、压缩与监听配置；通常不需要直接修改。
+- `start.sh`: checks dependencies, builds the static site, and starts the service.
+- `Caddyfile`: static-file, compression, and listener configuration; it normally needs no changes.
 
-如需让服务在 macOS 登录或重启后自动启动，可将此脚本封装为 `launchd` 用户服务；当前版本保持前台运行，以便先确认书籍和站点显示正常。
+To start the service automatically after macOS login or restart, wrap this script in a `launchd` user service. The included workflow intentionally stays in the foreground so you can first verify the book and site output.
