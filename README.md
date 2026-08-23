@@ -34,6 +34,8 @@ The local server opens at `http://127.0.0.1:8080/index.html`. Without a server, 
 
 BookWeave is a script-based local tool and does not need to be installed as a Python package. Use `uv run` to execute commands with the locked dependencies.
 
+For persistent, local-only static hosting with one command, see [local-deployment](local-deployment/README.md).
+
 ## Input sources
 
 The project uses an EPUB-first source layout:
