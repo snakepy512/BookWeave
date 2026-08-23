@@ -34,7 +34,7 @@ uv run python book-reader-builder.py --source-dir . -o ./book-web --server
 
 BookWeave 是以脚本为入口的本地工具，不需要安装成 Python package。推荐使用 `uv run` 执行命令，以确保使用锁定的依赖版本。
 
-如需用一条命令长期在本机运行静态阅读站点，请参阅 [本地部署说明](local-deployment/README.md)。
+如需用一条命令长期在本机运行静态阅读站点，请参阅 [本地部署说明](local-deployment/README.zh-CN.md)。
 
 ## 输入源
 
