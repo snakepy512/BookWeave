@@ -1,0 +1,10 @@
+# Local-only static hosting for BookWeave.
+# The start script supplies both environment variables before Caddy starts.
+http://{$BOOKWEAVE_LISTEN:127.0.0.1:8765} {
+	# A site address alone can still create a wildcard listener. Bind explicitly
+	# so the default remains local-only.
+	bind {$BOOKWEAVE_BIND:127.0.0.1}
+	root * {$BOOKWEAVE_SITE_ROOT:./book-web}
+	encode zstd gzip
+	file_server
+}
