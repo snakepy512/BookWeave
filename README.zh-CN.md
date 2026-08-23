@@ -9,6 +9,18 @@ BookWeave 是一个 EPUB-first 的电子书阅读和文档转换工具链。它�
 
 项目仍然通过兼容命令支持仅使用 PDF 的输入。
 
+## 阅读器预览
+
+面向 macOS 桌面阅读的章节页将书籍目录、正文和本章目录分为三栏；搜索与主题控件位于切换书籍控件的上方。
+
+### 浅色主题
+
+![BookWeave 三栏阅读器浅色主题](images/three-column-reader-light.png)
+
+### 深色主题
+
+![BookWeave 三栏阅读器深色主题](images/three-column-reader-dark.png)
+
 ## 快速开始
 
 BookWeave 使用 Python 3.14，并通过 [uv](https://docs.astral.sh/uv/) 管理依赖：

@@ -11,7 +11,7 @@ PDF-only input remains supported through compatibility commands.
 
 ## Reader preview
 
-The chapter reader separates book-level navigation, focused reading, and the current chapter outline into three responsive columns. Search and theme controls sit directly above the book switcher.
+The macOS desktop reader separates book-level navigation, focused reading, and the current chapter outline into three columns. Search and theme controls sit directly above the book switcher.
 
 ### Light theme
 
