@@ -138,6 +138,8 @@ class EpubParserTests(unittest.TestCase):
             chapter = (target / "books/alpha/chapters/001-chapter-one.html").read_text(encoding="utf-8")
             self.assertIn('../beta/index.html', index)
             self.assertIn('../../beta/index.html', chapter)
+            self.assertIn('reader-controls-inline', index)
+            self.assertLess(index.index('reader-controls-inline'), index.index('切换书籍'))
 
     def test_single_book_source_build_has_a_library_landing_page(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -257,14 +259,22 @@ class EpubParserTests(unittest.TestCase):
             self.assertNotIn("下载原始 EPUB", chapter)
             self.assertNotIn("打开原始 PDF", chapter)
             self.assertEqual(chapter.count("Chapter One</h1>"), 1)
-            self.assertIn('<aside class="toc chapter-toc"', chapter)
-            self.assertIn('class="toc-level-1 active"', chapter)
+            self.assertIn('<div class="layout chapter-layout">', chapter)
+            self.assertIn('<aside class="toc book-toc"', chapter)
+            self.assertIn('<aside class="toc section-toc"', chapter)
+            self.assertIn('book-chapter-link active', chapter)
+            self.assertIn('data-section-link', chapter)
             self.assertIn('href="#rendered-epub-c0001-b0003"', chapter)
             self.assertIn("Section One", chapter)
-            toc = chapter.split('<section class="chapter-content"', 1)[0]
-            self.assertNotIn("Figure 1.1 Caption", toc)
-            self.assertNotIn("This chapter covers", toc)
+            book_toc = chapter.split('<main class="reader">', 1)[0]
+            self.assertNotIn("Section One", book_toc)
+            section_toc = chapter.rsplit('<aside class="toc section-toc"', 1)[1]
+            self.assertIn("Section One", section_toc)
+            self.assertNotIn("Figure 1.1 Caption", section_toc)
+            self.assertNotIn("This chapter covers", section_toc)
             self.assertIn("minmax(0,48rem)", (target / "assets/reader.css").read_text(encoding="utf-8"))
+            self.assertIn("chapter-layout", reader_css())
+            self.assertIn("data-section-link", reader_script())
 
             render_reader(bundle, publication, target, layout="both")
             self.assertTrue((target / "merged_book.html").is_file())

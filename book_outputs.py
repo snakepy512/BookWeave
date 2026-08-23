@@ -144,17 +144,21 @@ button,input,select { font:inherit; } button,select { cursor:pointer; }
 .layout { display:grid; grid-template-columns:minmax(15rem,18rem) minmax(0,48rem); gap:clamp(2rem,6vw,6rem); width:min(88rem,calc(100% - 4rem)); margin:0 auto; align-items:start; }
 .layout > .reader:only-child { grid-column:1 / -1; max-width:48rem; }
 .toc { position:sticky; top:1.25rem; height:calc(100vh - 2.5rem); overflow:auto; padding:0 1rem .5rem 0; border-right:1px solid var(--border); scrollbar-width:thin; }
+.chapter-layout { grid-template-columns:minmax(17rem,20rem) minmax(0,1fr) minmax(22rem,26rem); gap:2rem; width:calc(100% - 4rem); max-width:none; }
+.chapter-layout .section-toc { padding:0 0 .5rem 1.5rem; border-right:0; border-left:1px solid var(--border); }
+.chapter-layout .chapter-content { max-width:78ch; }.section-toc a { padding:.48rem .65rem; font-size:.94rem; line-height:1.45; }.section-toc .toc-level-2 { padding-left:.65rem !important; }.section-toc .toc-level-3 { padding-left:1.25rem !important; font-size:.86rem !important; }
+.toc-empty { margin:.5rem; color:var(--muted); font-size:.78rem; }
 .toc-header { margin-bottom:.75rem; padding-bottom:.75rem; border-bottom:1px solid var(--border); color:var(--heading); font-size:.84rem; font-weight:650; }
 .toc-list { display:grid; gap:.08rem; }.toc-group { margin:0; }.toc-group > summary { list-style:none; cursor:pointer; }.toc-group > summary::-webkit-details-marker { display:none; }.toc-group > summary::before { content:"⌄"; color:var(--muted); font-size:.75rem; }.toc-group:not([open]) > summary::before { content:"›"; }.toc-sublist { margin:.1rem 0 .35rem; }
 .toc a { display:block; padding:.3rem .5rem; border-radius:.35rem; color:var(--muted); font-size:.82rem; line-height:1.35; }.toc a:hover,.toc a.active { color:var(--heading); background:var(--surface-hover); text-decoration:none; }.toc-level-2 { padding-left:1.15rem !important; }.toc-level-3 { padding-left:1.8rem !important; font-size:.76rem !important; }
 .reader { min-width:0; padding:4rem 0 7rem; }.reader-nav { display:flex; justify-content:space-between; gap:1rem; margin-bottom:2.5rem; color:var(--muted); font-size:.82rem; }.reader-nav-links,.chapter-nav { display:flex; gap:1rem; flex-wrap:wrap; }.reader-header { margin-bottom:2.2rem; padding-bottom:1.2rem; border-bottom:1px solid var(--border); }.eyebrow { color:var(--accent); font-size:.72rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }.reader-header h1 { margin:.35rem 0 .55rem; }.reader-subtitle { margin:0; color:var(--muted); font-size:.9rem; }
 .chapter-index { margin-top:2rem; }.chapter-filter { width:100%; margin:0 0 1rem; padding:.65rem .75rem; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:.4rem; outline:none; }.chapter-filter:focus { border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent); }.chapter-list,.library-list { display:grid; gap:.1rem; padding:0; list-style:none; }.chapter-list li,.library-list li { margin:0; }.chapter-list a,.library-card { display:flex; align-items:baseline; gap:.75rem; padding:.7rem .65rem; border-radius:.4rem; color:var(--text); text-decoration:none; }.chapter-list a:hover,.library-card:hover { background:var(--surface-hover); text-decoration:none; }.chapter-number { min-width:2.25rem; color:var(--accent); font:.76rem ui-monospace,SFMono-Regular,Menlo,monospace; }.chapter-meta,.library-card-meta { margin-left:auto; color:var(--muted); font-size:.75rem; }.library-card-title { color:var(--heading); font:1.05rem Georgia,serif; }
 .chapter-content { min-width:0; width:100%; max-width:46rem; }.chapter-nav { margin:3rem 0; padding-top:1.2rem; border-top:1px solid var(--border); }.reader h1,.reader h2,.reader h3,.reader h4 { color:var(--heading); line-height:1.22; }.reader h1 { font:2.7rem/1.12 Georgia,serif; letter-spacing:-.025em; }.reader h2 { margin-top:3rem; padding-top:.3rem; font:1.75rem/1.2 Georgia,serif; }.reader h3 { margin-top:2rem; font:1.28rem/1.25 Georgia,serif; }.reader p,.reader li { font-family:Georgia,"Times New Roman",serif; }.reader img { max-width:100%; height:auto; }.reader pre { overflow-x:auto; padding:1rem; border:1px solid var(--border); border-radius:.45rem; background:var(--code); font:.82rem/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; white-space:pre; }.reader table { width:100%; border-collapse:collapse; overflow:auto; display:block; }.reader th,.reader td { padding:.5rem .7rem; border:1px solid var(--border); text-align:left; }.source-banner { padding:.8rem 1rem; border-left:2px solid var(--accent); background:var(--banner); color:var(--muted); }
-.library-nav { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:1.75rem; padding-bottom:.8rem; border-bottom:1px solid var(--border); color:var(--muted); font-size:.84rem; }.library-nav label { display:flex; align-items:center; gap:.45rem; }.library-nav select { max-width:min(28rem,70vw); padding:.35rem .5rem; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:.35rem; }
-.reader-controls { position:fixed; z-index:20; top:.85rem; right:clamp(1rem,3vw,3rem); display:flex; align-items:center; gap:.45rem; padding:.3rem; border:1px solid var(--border); border-radius:.55rem; background:color-mix(in srgb,var(--bg) 88%,transparent); backdrop-filter:blur(10px); }.reader-controls button,.reader-controls select { border:0; border-radius:.32rem; color:var(--muted); background:transparent; font-size:.77rem; padding:.4rem .5rem; }.reader-controls button:hover,.reader-controls select:hover { color:var(--heading); background:var(--surface-hover); }.reader-controls kbd { margin-left:.3rem; padding:.08rem .25rem; border:1px solid var(--border); border-radius:.22rem; font:.68rem ui-monospace,monospace; }.theme-control { display:flex; align-items:center; gap:.15rem; color:var(--muted); font-size:.72rem; }.sidebar-toggle { display:none; }
+.library-nav { display:grid; gap:.65rem; margin-bottom:1.75rem; padding-bottom:.8rem; border-bottom:1px solid var(--border); color:var(--muted); font-size:.84rem; }.library-nav-main { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; }.library-nav label { display:flex; align-items:center; gap:.45rem; }.library-nav select { max-width:min(28rem,70vw); padding:.35rem .5rem; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:.35rem; }
+.reader-controls { display:flex; align-items:center; justify-content:flex-end; gap:.45rem; flex-wrap:wrap; width:fit-content; padding:.3rem; border:1px solid var(--border); border-radius:.55rem; background:color-mix(in srgb,var(--surface) 92%,transparent); }.reader-controls-inline { justify-self:end; }.reader-controls-standalone { margin:0 0 1rem auto; }.reader-controls button,.reader-controls select { border:0; border-radius:.32rem; color:var(--muted); background:transparent; font-size:.77rem; padding:.4rem .5rem; }.reader-controls button:hover,.reader-controls select:hover { color:var(--heading); background:var(--surface-hover); }.reader-controls kbd { margin-left:.3rem; padding:.08rem .25rem; border:1px solid var(--border); border-radius:.22rem; font:.68rem ui-monospace,monospace; }.theme-control { display:flex; align-items:center; gap:.15rem; color:var(--muted); font-size:.72rem; }.sidebar-toggle { display:none; }
 .search-dialog { width:min(42rem,calc(100vw - 2rem)); border:1px solid var(--border); border-radius:.7rem; padding:0; color:var(--text); background:var(--surface); box-shadow:0 20px 60px rgba(0,0,0,.25); }.search-dialog::backdrop { background:rgba(0,0,0,.35); }.search-panel { padding:.75rem; }.search-panel-header { display:flex; align-items:center; gap:.75rem; }.search-panel-header label { flex:1; }.search-panel-header input { width:100%; border:0; outline:0; color:var(--text); background:transparent; font-size:1rem; }.search-panel-header button { border:1px solid var(--border); border-radius:.35rem; color:var(--muted); background:var(--bg); padding:.3rem .45rem; }.search-hint { margin:.65rem 0 .35rem; color:var(--muted); font: .73rem/1.4 -apple-system,sans-serif; }.search-results { max-height:min(55vh,28rem); overflow:auto; margin:0; padding:0; list-style:none; }.search-results a { display:block; padding:.65rem .6rem; border-radius:.35rem; color:var(--text); }.search-results a:hover,.search-results a[aria-selected="true"] { background:var(--surface-hover); text-decoration:none; }.search-results small { display:block; color:var(--muted); }
-@media (max-width:900px) { .layout { display:block; width:min(46rem,calc(100% - 2rem)); }.reader { padding-top:4rem; }.toc { position:fixed; z-index:15; top:0; bottom:0; left:0; width:min(20rem,88vw); height:auto; padding:5rem 1rem 2rem; border:0; border-right:1px solid var(--border); background:var(--surface); box-shadow:12px 0 36px rgba(0,0,0,.16); transform:translateX(-105%); transition:transform .18s ease; }.sidebar-open .toc { transform:translateX(0); }.sidebar-toggle { display:inline-block; }.chapter-content { max-width:none; } }
-@media (max-width:560px) { body { font-size:15px; }.layout { width:calc(100% - 1.5rem); }.reader { padding-top:4.5rem; }.reader h1 { font-size:2.25rem; }.reader-controls { left:.75rem; right:.75rem; justify-content:space-between; }.theme-control { display:none; }.search-trigger kbd { display:none; } }
+@media (max-width:900px) { .layout:not(.chapter-layout) { display:block; width:min(46rem,calc(100% - 2rem)); }.reader { padding-top:4rem; }.layout:not(.chapter-layout) .toc { position:fixed; z-index:15; top:0; bottom:0; left:0; width:min(20rem,88vw); height:auto; padding:5rem 1rem 2rem; border:0; border-right:1px solid var(--border); background:var(--surface); box-shadow:12px 0 36px rgba(0,0,0,.16); transform:translateX(-105%); transition:transform .18s ease; }.sidebar-open .layout:not(.chapter-layout) .toc { transform:translateX(0); }.layout:not(.chapter-layout) .sidebar-toggle { display:inline-block; }.layout:not(.chapter-layout) .chapter-content { max-width:none; } }
+@media (max-width:560px) { body { font-size:15px; }.layout { width:calc(100% - 1.5rem); }.reader { padding-top:1.75rem; }.reader h1 { font-size:2.25rem; }.reader-controls { width:100%; justify-content:space-between; }.reader-controls-inline { justify-self:stretch; }.search-trigger kbd { display:none; } }
 """
     return css.replace(
         "__BOOKWEAVE_DEFAULT_THEME__", variables(default_theme)
@@ -219,6 +223,20 @@ def reader_script() -> str:
     const open = root.classList.toggle('sidebar-open');
     sidebarToggle.setAttribute('aria-expanded', String(open));
   });
+  const sectionLinks = [...document.querySelectorAll('[data-section-link]')];
+  const sectionTargets = sectionLinks
+    .map(link => ({ link, target: document.getElementById(link.dataset.target) }))
+    .filter(item => item.target);
+  if ('IntersectionObserver' in window && sectionTargets.length) {
+    const byTarget = new Map(sectionTargets.map(item => [item.target, item.link]));
+    const observer = new IntersectionObserver(entries => {
+      const visible = entries.filter(entry => entry.isIntersecting).sort((left, right) => left.boundingClientRect.top - right.boundingClientRect.top)[0];
+      if (!visible) return;
+      sectionLinks.forEach(link => link.classList.remove('active'));
+      byTarget.get(visible.target)?.classList.add('active');
+    }, { rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+    sectionTargets.forEach(item => observer.observe(item.target));
+  }
 
   const dialog = document.querySelector('[data-search-dialog]');
   const searchInput = document.querySelector('[data-search-input]');
@@ -272,6 +290,7 @@ def _reader_document(
     css_href: str,
     js_href: str,
     style: str = "dark",
+    controls: str = "",
 ) -> str:
     escaped_language = html.escape(language or "en", quote=True)
     default_theme = style if style in READER_THEMES else "dark"
@@ -283,8 +302,7 @@ def _reader_document(
 <title>{html.escape(title)}</title>
 <link rel="stylesheet" href="{html.escape(css_href, quote=True)}">
 </head>
-<body>{body}
-{render_reader_controls()}
+<body>{controls}{body}
 <script src="{html.escape(js_href, quote=True)}" defer></script>
 </body>
 </html>
@@ -311,6 +329,7 @@ def _render_index_document(
         if library_books
         else ""
     )
+    standalone_controls = render_reader_controls("reader-controls-standalone") if not library_books else ""
     body = f'''<div class="layout"><main class="reader">
 {library_nav}
 <header class="reader-header">
@@ -332,50 +351,52 @@ def _render_index_document(
         "assets/reader.css",
         "assets/reader.js",
         style,
+        standalone_controls,
     )
 
 
-def _render_chapter_toc(chapters: list[tuple[object, str]], current_chapter) -> str:
+def _render_book_toc(chapters: list[tuple[object, str]], current_chapter) -> str:
+    """Render only the book's top-level chapters for the left sidebar."""
     items: list[str] = []
     for item_chapter, item_filename in chapters:
         is_current = item_chapter.index == current_chapter.index
         chapter_href = "#top" if is_current else html.escape(item_filename, quote=True)
-        chapter_link = (
-            f'<a class="toc-level-1{" active" if is_current else ""}" '
+        items.append(
+            f'<a class="toc-level-1 book-chapter-link{" active" if is_current else ""}" '
+            'data-book-chapter-link '
             f'href="{chapter_href}">{item_chapter.index:03d} · '
             f'{html.escape(item_chapter.title or item_chapter.href)}</a>'
         )
-        if not is_current:
-            items.append(chapter_link)
-            continue
-        subitems = []
-        for block in item_chapter.blocks:
-            if (
-                block.kind == "heading"
-                and (block.heading_level or 0) >= 2
-                and block.text.strip() != (item_chapter.title or "").strip()
-                and not _is_caption_heading(block.text)
-                and not _is_chapter_overview_heading(block.text)
-            ):
-                anchor = html.escape(f"rendered-{block.block_id}", quote=True)
-                level = min(3, max(2, block.heading_level or 2))
-                subitems.append(
-                    f'<a class="toc-level-{level}" href="#{anchor}">'
-                    f'{html.escape(block.text)}</a>'
-                )
-        if subitems:
-            rendered_subitems = "".join(subitems)
-            items.append(
-                '<details class="toc-group" open><summary>'
-                f'{chapter_link}</summary><div class="toc-sublist">'
-                f'{rendered_subitems}</div></details>'
-            )
-        else:
-            items.append(chapter_link)
     return (
-        '<aside class="toc chapter-toc" aria-label="章节目录">'
-        '<div class="toc-header"><a href="../index.html">返回目录</a></div>'
+        '<aside class="toc book-toc" aria-label="书籍目录">'
+        '<div class="toc-header"><a href="../index.html">书籍目录</a></div>'
         f'<nav class="toc-list">{"".join(items)}</nav></aside>'
+    )
+
+
+def _render_current_chapter_toc(chapter) -> str:
+    """Render headings from the selected chapter for the right sidebar."""
+    items: list[str] = []
+    for block in chapter.blocks:
+        if (
+            block.kind != "heading"
+            or (block.heading_level or 0) < 2
+            or block.text.strip() == (chapter.title or "").strip()
+            or _is_caption_heading(block.text)
+            or _is_chapter_overview_heading(block.text)
+        ):
+            continue
+        anchor = html.escape(f"rendered-{block.block_id}", quote=True)
+        level = min(3, max(2, block.heading_level or 2))
+        items.append(
+            f'<a class="toc-level-{level} chapter-section-link" data-section-link '
+            f'data-target="{anchor}" href="#{anchor}">{html.escape(block.text)}</a>'
+        )
+    empty = '<p class="toc-empty">本章没有可展开的小节。</p>' if not items else ""
+    return (
+        '<aside class="toc section-toc" aria-label="本章目录">'
+        '<div class="toc-header"><span>本章目录</span></div>'
+        f'<nav class="toc-list">{"".join(items)}{empty}</nav></aside>'
     )
 
 
@@ -396,14 +417,16 @@ def _render_chapter_document(
     if following:
         navigation.append(f'<a href="{html.escape(following[1], quote=True)}">下一章 →</a>')
     nav_links = "".join(navigation)
-    chapter_toc = _render_chapter_toc(chapters, chapter)
+    book_toc = _render_book_toc(chapters, chapter)
+    section_toc = _render_current_chapter_toc(chapter)
     library_nav = (
         render_book_navigation(library_books, bundle.book_id, "../../index.html", "../../")
         if library_books
         else ""
     )
-    body = f'''<div class="layout">
-{chapter_toc}
+    standalone_controls = render_reader_controls("reader-controls-standalone") if not library_books else ""
+    body = f'''<div class="layout chapter-layout">
+{book_toc}
 <main class="reader">
 {library_nav}
 <nav class="reader-nav" aria-label="章节导航">
@@ -418,7 +441,9 @@ def _render_chapter_document(
 {_render_reader_chapter_content(chapter, "../epub-source")}
 </section>
 <nav class="chapter-nav" aria-label="章节导航">{nav_links}<a href="../index.html">返回目录</a></nav>
-</main></div>'''
+</main>
+{section_toc}
+</div>'''
     return _reader_document(
         chapter.title or publication.title,
         publication.language,
@@ -426,6 +451,7 @@ def _render_chapter_document(
         "../assets/reader.css",
         "../assets/reader.js",
         style,
+        standalone_controls,
     )
 
 
@@ -449,6 +475,7 @@ def _render_merged_document(
         if library_books
         else ""
     )
+    standalone_controls = render_reader_controls("reader-controls-standalone") if not library_books else ""
     body = f'''<div class="layout"><aside class="toc"><strong>目录</strong>{"".join(toc)}</aside>
 <main class="reader">{library_nav}<header class="reader-header"><div class="eyebrow">EPUB Reader</div>
 <h1>{html.escape(publication.title)}</h1></header>
@@ -462,6 +489,7 @@ def _render_merged_document(
         "assets/reader.css",
         "assets/reader.js",
         style,
+        standalone_controls,
     )
 
 

@@ -9,6 +9,18 @@ BookWeave is an EPUB-first book reader and document conversion pipeline. It turn
 
 PDF-only input remains supported through compatibility commands.
 
+## Reader preview
+
+The chapter reader separates book-level navigation, focused reading, and the current chapter outline into three responsive columns. Search and theme controls sit directly above the book switcher.
+
+### Light theme
+
+![BookWeave three-column reader in light theme](images/three-column-reader-light.png)
+
+### Dark theme
+
+![BookWeave three-column reader in dark theme](images/three-column-reader-dark.png)
+
 ## Quick start
 
 BookWeave uses Python 3.14 and [uv](https://docs.astral.sh/uv/) for dependency management:

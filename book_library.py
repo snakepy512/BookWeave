@@ -48,9 +48,10 @@ class LibraryBook:
         }
 
 
-def render_reader_controls() -> str:
+def render_reader_controls(class_name: str = "") -> str:
     """Render the shared controls used by every generated reader page."""
-    return '''<div class="reader-controls" aria-label="阅读器工具">
+    classes = "reader-controls" + (f" {html.escape(class_name, quote=True)}" if class_name else "")
+    return f'''<div class="{classes}" aria-label="阅读器工具">
 <button class="sidebar-toggle" data-sidebar-toggle type="button" aria-label="打开目录" aria-expanded="false">目录</button>
 <button class="search-trigger" data-search-open type="button">搜索 <kbd>⌘ K</kbd></button>
 <label class="theme-control">主题
@@ -84,11 +85,13 @@ def render_book_navigation(
         )
     return (
         '<nav class="library-nav" aria-label="书籍导航">'
+        + render_reader_controls("reader-controls-inline")
+        + '<div class="library-nav-main">'
         f'<a href="{html.escape(library_href, quote=True)}">📚 书库</a>'
         '<label>切换书籍 '
         '<select data-book-switcher aria-label="切换书籍">'
         + "".join(options)
-        + "</select></label></nav>"
+        + "</select></label></div></nav>"
     )
 
 
@@ -138,6 +141,7 @@ def render_library_index(
         )
 
     body = f'''<div class="layout"><main class="reader">
+{render_reader_controls("reader-controls-standalone")}
 <header class="reader-header">
 <div class="eyebrow">BookWeave Library</div>
 <h1>书库</h1>
@@ -158,7 +162,6 @@ def render_library_index(
 <link rel="stylesheet" href="assets/reader.css">
 </head>
 <body>{body}
-{render_reader_controls()}
 <script src="assets/reader.js" defer></script>
 </body>
 </html>
