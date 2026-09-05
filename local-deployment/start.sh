@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Build and serve BookWeave locally with Caddy.
+# Serve BookWeave locally with Caddy; rebuild only when requested.
 # Stop the foreground server with Ctrl+C.
 set -euo pipefail
 
@@ -11,7 +11,23 @@ host="${BOOKWEAVE_HOST:-127.0.0.1}"
 port="${BOOKWEAVE_PORT:-8765}"
 caddy_bin="${CADDY_BIN:-caddy}"
 
-if ! command -v uv >/dev/null 2>&1; then
+rebuild=0
+for arg in "$@"; do
+    case "$arg" in
+        --rebuild) rebuild=1 ;;
+        -h|--help)
+            echo "用法：$0 [--rebuild]"
+            echo "默认使用已有页面；--rebuild 重新生成页面后启动服务。"
+            exit 0
+            ;;
+        *)
+            echo "错误：未知参数 ${arg}。用法：$0 [--rebuild]" >&2
+            exit 1
+            ;;
+    esac
+done
+
+if [[ "$rebuild" == "1" ]] && ! command -v uv >/dev/null 2>&1; then
     echo "错误：未找到 uv。请先安装 uv：https://docs.astral.sh/uv/" >&2
     exit 1
 fi
@@ -26,7 +42,7 @@ if [[ ! "$port" =~ ^[0-9]+$ ]] || ((port < 1 || port > 65535)); then
     exit 1
 fi
 
-if [[ "${BOOKWEAVE_SKIP_BUILD:-0}" != "1" ]]; then
+if [[ "$rebuild" == "1" ]]; then
     echo "正在生成静态站点：$site_root"
     (
         cd "$project_dir"
@@ -38,7 +54,7 @@ if [[ "${BOOKWEAVE_SKIP_BUILD:-0}" != "1" ]]; then
 fi
 
 if [[ ! -f "$site_root/index.html" ]]; then
-    echo "错误：找不到 $site_root/index.html。请放入书籍后重新运行，或不要设置 BOOKWEAVE_SKIP_BUILD=1。" >&2
+    echo "错误：找不到 $site_root/index.html。请放入书籍后运行 $0 --rebuild 生成页面。" >&2
     exit 1
 fi
 

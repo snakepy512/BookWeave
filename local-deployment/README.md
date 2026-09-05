@@ -18,7 +18,7 @@ From the repository root, run:
 ./local-deployment/start.sh
 ```
 
-The script generates an up-to-date `book-web/`, then starts Caddy in the foreground. Open <http://127.0.0.1:8765> and press `Ctrl+C` in the terminal to stop it.
+The script serves the existing `book-web/` and starts Caddy in the foreground without rebuilding. On the first run or after updating books, run `./local-deployment/start.sh --rebuild` to generate pages before starting. Open <http://127.0.0.1:8765> and press `Ctrl+C` in the terminal to stop it.
 
 The script never commits or uploads books or generated output. It reads source files locally and serves the static site only through the loopback address.
 
@@ -30,10 +30,10 @@ Use a different port:
 BOOKWEAVE_PORT=9000 ./local-deployment/start.sh
 ```
 
-Skip the build when `book-web/` is already current:
+Rebuild pages and start the server (use on the first run or after updating books):
 
 ```bash
-BOOKWEAVE_SKIP_BUILD=1 ./local-deployment/start.sh
+./local-deployment/start.sh --rebuild
 ```
 
 Allow access from your local network (only on a trusted network):
@@ -46,7 +46,7 @@ This makes book content available to devices on the same network that know your 
 
 ## Files
 
-- `start.sh`: checks dependencies, builds the static site, and starts the service.
+- `start.sh`: checks dependencies and starts the service; builds the static site only with `--rebuild`.
 - `Caddyfile`: static-file, compression, and listener configuration; it normally needs no changes.
 
 To start the service automatically after macOS login or restart, wrap this script in a `launchd` user service. The included workflow intentionally stays in the foreground so you can first verify the book and site output.

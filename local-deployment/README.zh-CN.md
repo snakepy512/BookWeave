@@ -18,7 +18,7 @@
 ./local-deployment/start.sh
 ```
 
-脚本会先生成最新的 `book-web/`，随后在前台启动 Caddy。浏览器访问 <http://127.0.0.1:8765>；在终端按 `Ctrl+C` 停止服务。
+脚本默认使用已有的 `book-web/`，直接在前台启动 Caddy，不会重新生成页面。首次启动或书籍更新后，请运行 `./local-deployment/start.sh --rebuild` 生成页面后启动。浏览器访问 <http://127.0.0.1:8765>；在终端按 `Ctrl+C` 停止服务。
 
 脚本不会提交或上传书籍与生成产物。它只在本机读取源文件，并将静态文件服务于本机回环地址。
 
@@ -30,10 +30,10 @@
 BOOKWEAVE_PORT=9000 ./local-deployment/start.sh
 ```
 
-已有最新 `book-web/` 时跳过构建：
+重新生成页面并启动（首次启动或书籍更新后使用）：
 
 ```bash
-BOOKWEAVE_SKIP_BUILD=1 ./local-deployment/start.sh
+./local-deployment/start.sh --rebuild
 ```
 
 局域网访问（请只在受信任的网络中使用）：
@@ -46,7 +46,7 @@ BOOKWEAVE_HOST=0.0.0.0 ./local-deployment/start.sh
 
 ## 文件说明
 
-- `start.sh`：检查依赖、生成静态站点并启动服务。
+- `start.sh`：检查依赖并启动服务；仅传入 `--rebuild` 时生成静态站点。
 - `Caddyfile`：Caddy 的静态文件、压缩与监听配置；通常不需要直接修改。
 
 如需让服务在 macOS 登录或重启后自动启动，可将此脚本封装为 `launchd` 用户服务；当前版本保持前台运行，以便先确认书籍和站点显示正常。
